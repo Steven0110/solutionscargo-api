@@ -1,0 +1,102 @@
+service: public
+
+plugins:
+  - serverless-dotenv-plugin
+  - serverless-domain-manager
+
+useDotenv: true
+configValidationMode: error
+
+custom:
+  stage: ${env:STAGE}
+  domains:
+    prod: public-api.solutionscargo.com.mx
+
+  customDomain:
+    basePath: ''
+    domainName: public-api.solutionscargo.com.mx
+    stage: prod
+    certificateName: "*.solutionscargo.com.mx"
+    certificateArn: "arn:aws:acm:us-west-2:677076163344:certificate/d031e498-42f7-4830-9500-b1a381f75faf"
+    hostedZoneId: Z2FDTNDATAQYW2
+    createRoute53Record: false    
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  profile: solutionscargo
+  region: us-west-2
+  endpointType: EDGE
+  stage: prod
+  apiGateway:
+    apiKeys:
+      - name: 'Solutions Cargo Public API Key'
+        value: '67D1B609CE18CAC39DB201FEA4F9967DDC5663F0ADA5FE1295'
+    usagePlan:
+      throttle:
+        burstLimit: 50
+        rateLimit: 100
+  iam:
+    role: arn:aws:iam::677076163344:role/service-role/main-role
+    deploymentRole: arn:aws:iam::677076163344:role/DeploymentRole
+  vpc:
+    securityGroupIds:
+      - sg-0a95b32eb7cb62e87
+    subnetIds:
+      - subnet-03fff7807c63a13cd
+
+resources:
+  Resources:
+    ApiGatewayRestApi:
+      Type: 'AWS::ApiGateway::RestApi'
+      Properties:
+        Name: ApiGatewayRestApi
+    GatewayResponse:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: BAD_REQUEST_BODY
+        ResponseTemplates:
+          application/json: '{"message":$context.error.validationErrorString}'
+        RestApiId: 
+          Ref: 'ApiGatewayRestApi'
+        StatusCode: '400'
+    Forbidden:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: INVALID_API_KEY
+        RestApiId: 
+          Ref: 'ApiGatewayRestApi'
+        StatusCode: '403'
+    Denied:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: ACCESS_DENIED
+        RestApiId:
+          Ref: 'ApiGatewayRestApi'
+        StatusCode: '401'
+    Unauthorized:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: UNAUTHORIZED
+        RestApiId:
+          Ref: 'ApiGatewayRestApi'
+        StatusCode: '401'
+
+
+
+package:
+  individually: true
+  patterns:
+    - '!./**'
